@@ -1,0 +1,8 @@
+[package]
+name = "xlib"
+version = "0.1.0"
+authors = [ "Michael Graf" ]
+
+[lib]
+name = "xlib"
+src = "src/lib.rs"
