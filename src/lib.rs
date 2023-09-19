@@ -1,4 +1,5 @@
 use std::ffi::CString;
+use std::fmt;
 
 pub mod cdef;
 
@@ -16,6 +17,30 @@ impl Display
             _private: std::ptr::null_mut()
         }
     }
+}
+
+#[derive(Debug)]
+pub struct XlibError
+{
+    message: String,
+    kind: ErrorKind,
+    side: Option<Box<dyn std::error::Error>>
+}
+
+impl std::error::Error for XLibError {}
+
+impl fmt::Display for XLibError
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "XlibError")
+    }
+}
+
+#[derive(Debug)]
+pub enum ErrorKind
+{
+    InvalidArgumentValue,
+    ExternReturnedNull
 }
 
 /// An xlib equivalent to Rust's Box that uses XFree to free memory.
@@ -127,39 +152,77 @@ impl<T: ?Sized> Drop for XBox<T>
     }
 }
 
-pub fn x_open_display(display_name: Option<&str>) -> Result<Display, Box<dyn std::error::Error>>
+/// Retrieves a connection, also known as a display, to the X server.
+///
+/// # Parameters
+/// ## display_name
+/// Specifies the hardware display name, which determines the display and communcations
+/// domain to be used. On a POSIX-conformant system, if the display_name is None,
+/// it defaults to the value of the DISPLAY environment variable.
+///
+/// # Return value
+/// If display_name contains an invalid string (i.e. contains any 0 bytes),
+/// the returned Result will hold an XlibError of kind InvalidArgumentValue.
+///
+/// If x_open_display succeeds, the Result returned will hold a Display struct
+/// that serves as the connection to the X server.
+///
+/// If x_open_display can't retrieve a display for any other reason, the returned
+/// Result will hold a value of None.
+///
+/// # Remarks
+/// x_open_display connects the application to the X server through TCP or DECnet
+/// communications protocols, or through some local inter-process communication
+/// protocol. If the hostname is a host machine name and a single colon (:)
+/// separates the hostname and display number, x_open_display connects using TCP
+/// streams. If the hostname is not specified, Xlib uses whatever it believes is
+/// the fastest transport. If the hostname is a host machine name and a double
+/// colon (::) separates the hostname and display number, x_open_display connects
+/// using DECnet. A single X server can support any or all of these transport
+/// mechanisms simultaneously. A particular Xlib implementation can support many
+/// more of these transport mechanisms.
+///
+/// After a successful call to x_open_display, all of the screens in the display
+/// can be used by the client. The screen number specified in the display_name
+/// argument is returned by the x_default_screen function. You can access elements
+/// of the Display and Screen structures only by using the information functions.
+///
+/// Use x_close_display before exiting the program to destroy all resoures created
+/// on the display.
+pub fn x_open_display(display_name: Option<&str>) -> Result<Option<Display>, XLibError>
 {
-    match display_name
+    let display = match display_name
     {
         None =>
         {
-            let display = unsafe {
-                cdef::XOpenDisplay(std::ptr::null())
-            };
-
-            return Ok( Display { _private: display } )
+            unsafe { cdef::XOpenDisplay(std::ptr::null()) }
         },
-        Some(name) =>
+        Some(display_name) =>
         {
-            match CString::new(name)
+            let display_name = match CString::new(display_name)
             {
                 Err(err) =>
                 {
                     return Err(
-                        Box::new(err)
-                    );
+                        XLibError {
+                            message: String::from("Failed to convert display_name to CString."),
+                            kind: ErrorKind::InvalidArgumentValue,
+                            side: Some(Box::new(err))});
                 },
-                Ok(cstr) =>
-                {
-                    let ptr = cstr.as_ptr();
-                    let result = unsafe
-                    {
-                        cdef::XOpenDisplay(ptr)
-                    };
-                    return Ok( Display { _private: result } );
-                }
-            }
+                Ok(display_name) => display_name
+            };
+            let display_name = display_name.as_ptr(); 
+            unsafe { cdef::XOpenDisplay(display_name) }
         }
+    };
+    
+    if display.is_null()
+    {
+        Ok(None)
+    }
+    else
+    {
+        Ok(Display {_private: display})
     }
 }
 
