@@ -39,8 +39,7 @@ impl fmt::Display for XLibError
 #[derive(Debug)]
 pub enum ErrorKind
 {
-    InvalidArgumentValue,
-    ExternReturnedNull
+    InvalidArgumentValue
 }
 
 /// An xlib equivalent to Rust's Box that uses XFree to free memory.
