@@ -27,9 +27,9 @@ pub struct XlibError
     side: Option<Box<dyn std::error::Error>>
 }
 
-impl std::error::Error for XLibError {}
+impl std::error::Error for XlibError {}
 
-impl fmt::Display for XLibError
+impl fmt::Display for XlibError
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "XlibError")
@@ -188,7 +188,7 @@ impl<T: ?Sized> Drop for XBox<T>
 ///
 /// Use x_close_display before exiting the program to destroy all resoures created
 /// on the display.
-pub fn x_open_display(display_name: Option<&str>) -> Result<Option<Display>, XLibError>
+pub fn x_open_display(display_name: Option<&str>) -> Result<Option<Display>, XlibError>
 {
     let display = match display_name
     {
@@ -203,7 +203,7 @@ pub fn x_open_display(display_name: Option<&str>) -> Result<Option<Display>, XLi
                 Err(err) =>
                 {
                     return Err(
-                        XLibError {
+                        XlibError {
                             message: String::from("Failed to convert display_name to CString."),
                             kind: ErrorKind::InvalidArgumentValue,
                             side: Some(Box::new(err))});
@@ -221,7 +221,7 @@ pub fn x_open_display(display_name: Option<&str>) -> Result<Option<Display>, XLi
     }
     else
     {
-        Ok(Display {_private: display})
+        Ok(Some(Display {_private: display}))
     }
 }
 
