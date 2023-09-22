@@ -3,149 +3,115 @@ use std::fmt;
 
 pub mod cdef;
 
-pub struct Display
-{
-    _private: *mut cdef::Display
+pub struct Display {
+    _private: *mut cdef::Display,
 }
 
-impl Display
-{
-    pub fn create_invalid() -> Self
-    {
-        Display
-        {
-            _private: std::ptr::null_mut()
+impl Display {
+    pub fn create_invalid() -> Self {
+        Display {
+            _private: std::ptr::null_mut(),
         }
     }
 }
 
 #[derive(Debug)]
-pub struct XlibError
-{
+pub struct XlibError {
     message: String,
     kind: ErrorKind,
-    side: Option<Box<dyn std::error::Error>>
+    side: Option<Box<dyn std::error::Error>>,
 }
 
 impl std::error::Error for XlibError {}
 
-impl fmt::Display for XlibError
-{
+impl fmt::Display for XlibError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "XlibError")
     }
 }
 
 #[derive(Debug)]
-pub enum ErrorKind
-{
-    InvalidArgumentValue
+pub enum ErrorKind {
+    InvalidArgumentValue,
 }
 
 /// An xlib equivalent to Rust's Box that uses XFree to free memory.
 /// Make sure to only use this struct with resources that are meant
 /// to be freed with XFree.
-pub struct XBox<T: ?Sized>
-{
+pub struct XBox<T: ?Sized> {
     data: XBoxFatPtr,
-    phantom: std::marker::PhantomData<*const T>
+    phantom: std::marker::PhantomData<*const T>,
 }
 
 #[allow(dead_code)]
-struct XBoxFatPtr
-{
+struct XBoxFatPtr {
     data: *const std::ffi::c_void,
-    length: usize
+    length: usize,
 }
 
-impl<T> XBox<T>
-{
-    pub fn from_raw(ptr:*mut T) -> Self
-    {
+impl<T> XBox<T> {
+    pub fn from_raw(ptr: *mut T) -> Self {
         XBox {
-            data: XBoxFatPtr
-            {
+            data: XBoxFatPtr {
                 data: ptr as *const std::ffi::c_void,
                 length: 1,
             },
-            phantom: std::marker::PhantomData
+            phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl<T> XBox<[T]>
-{
-    pub fn boxed_slice_from_raw(ptr:*mut T, length: usize) -> XBox<[T]>
-    {
+impl<T> XBox<[T]> {
+    pub fn boxed_slice_from_raw(ptr: *mut T, length: usize) -> XBox<[T]> {
         XBox {
-            data: XBoxFatPtr
-            {
+            data: XBoxFatPtr {
                 data: ptr as *const std::ffi::c_void,
-                length: length
+                length: length,
             },
-            phantom: std::marker::PhantomData
+            phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl<T> std::ops::Deref for XBox<T>
-{
+impl<T> std::ops::Deref for XBox<T> {
     type Target = T;
 
-    fn deref(&self) -> &Self::Target
-    {
-        unsafe
-        {
-            &*(self.data.data as *const Self::Target)
-        }
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*(self.data.data as *const Self::Target) }
     }
 }
 
-impl<T> std::ops::DerefMut for XBox<T>
-{
-    fn deref_mut(&mut self) -> &mut Self::Target
-    {
-        unsafe
-        {
-            &mut *(self.data.data as *mut Self::Target)
-        }
+impl<T> std::ops::DerefMut for XBox<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { &mut *(self.data.data as *mut Self::Target) }
     }
 }
 
-impl<T> std::ops::Deref for XBox<[T]>
-{
+impl<T> std::ops::Deref for XBox<[T]> {
     type Target = [T];
 
-    fn deref(&self) -> &Self::Target
-    {
-        unsafe
-        {
+    fn deref(&self) -> &Self::Target {
+        unsafe {
             // FIXME: incredibly unsafe and ugly
-            let temp: & *const Self::Target = std::mem::transmute(&self.data);
+            let temp: &*const Self::Target = std::mem::transmute(&self.data);
             &*(*temp)
         }
     }
 }
 
-impl<T> std::ops::DerefMut for XBox<[T]>
-{
-    fn deref_mut(&mut self) -> &mut Self::Target
-    {
-        unsafe
-        {
+impl<T> std::ops::DerefMut for XBox<[T]> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe {
             // FIXME: incredibly unsafe and ugly
-            let temp: & *mut Self::Target = std::mem::transmute(&self.data);
+            let temp: &*mut Self::Target = std::mem::transmute(&self.data);
             &mut *(*temp)
         }
     }
 }
 
-impl<T: ?Sized> Drop for XBox<T>
-{
-    fn drop(&mut self)
-    {
-        unsafe
-        {
+impl<T: ?Sized> Drop for XBox<T> {
+    fn drop(&mut self) {
+        unsafe {
             cdef::XFree(self.data.data as *mut std::ffi::c_void);
         }
     }
@@ -188,55 +154,36 @@ impl<T: ?Sized> Drop for XBox<T>
 ///
 /// Use x_close_display before exiting the program to destroy all resoures created
 /// on the display.
-pub fn x_open_display(display_name: Option<&str>) -> Result<Option<Display>, XlibError>
-{
-    let display = match display_name
-    {
-        None =>
-        {
-            unsafe { cdef::XOpenDisplay(std::ptr::null()) }
-        },
-        Some(display_name) =>
-        {
-            let display_name = match CString::new(display_name)
-            {
-                Err(err) =>
-                {
-                    return Err(
-                        XlibError {
-                            message: String::from("Failed to convert display_name to CString."),
-                            kind: ErrorKind::InvalidArgumentValue,
-                            side: Some(Box::new(err))});
-                },
-                Ok(display_name) => display_name
+pub fn x_open_display(display_name: Option<&str>) -> Result<Option<Display>, XlibError> {
+    let display = match display_name {
+        None => unsafe { cdef::XOpenDisplay(std::ptr::null()) },
+        Some(display_name) => {
+            let display_name = match CString::new(display_name) {
+                Err(err) => {
+                    return Err(XlibError {
+                        message: String::from("Failed to convert display_name to CString."),
+                        kind: ErrorKind::InvalidArgumentValue,
+                        side: Some(Box::new(err)),
+                    });
+                }
+                Ok(display_name) => display_name,
             };
-            let display_name = display_name.as_ptr(); 
+            let display_name = display_name.as_ptr();
             unsafe { cdef::XOpenDisplay(display_name) }
         }
     };
-    
-    if display.is_null()
-    {
+
+    if display.is_null() {
         Ok(None)
-    }
-    else
-    {
-        Ok(Some(Display {_private: display}))
+    } else {
+        Ok(Some(Display { _private: display }))
     }
 }
 
-pub fn x_close_display(display: Display) -> i32
-{
-    unsafe
-    {
-        cdef::XCloseDisplay(display._private)
-    }
+pub fn x_close_display(display: Display) -> i32 {
+    unsafe { cdef::XCloseDisplay(display._private) }
 }
 
-pub fn x_default_screen(display: &Display) -> i32
-{
-    unsafe
-    {
-        cdef::XDefaultScreen(display._private)
-    }
+pub fn x_default_screen(display: &Display) -> i32 {
+    unsafe { cdef::XDefaultScreen(display._private) }
 }
