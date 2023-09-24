@@ -3,15 +3,18 @@ use std::fmt;
 
 pub mod cdef;
 
-pub struct Display {
-    _private: *mut cdef::Display,
+/// A simple wrapper around a raw pointer usually returned by some functions that are part of the
+/// safe interface of this library. Its primary purpose is to signal that the resource the raw
+/// pointer is pointing to is managed by Xlib itself and therefore is not to be freed manually.
+pub struct DoNotFree<T> {
+    data: *mut T,
 }
 
-impl Display {
-    pub fn create_invalid() -> Self {
-        Display {
-            _private: std::ptr::null_mut(),
-        }
+impl<T> std::ops::Deref for DoNotFree<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { &(*self.data) }
     }
 }
 
@@ -154,7 +157,9 @@ impl<T: ?Sized> Drop for XBox<T> {
 ///
 /// Use x_close_display before exiting the program to destroy all resoures created
 /// on the display.
-pub fn x_open_display(display_name: Option<&str>) -> Result<Option<Display>, XlibError> {
+pub fn x_open_display(
+    display_name: Option<&str>,
+) -> Result<Option<DoNotFree<cdef::Display>>, XlibError> {
     let display = match display_name {
         None => unsafe { cdef::XOpenDisplay(std::ptr::null()) },
         Some(display_name) => {
@@ -176,14 +181,14 @@ pub fn x_open_display(display_name: Option<&str>) -> Result<Option<Display>, Xli
     if display.is_null() {
         Ok(None)
     } else {
-        Ok(Some(Display { _private: display }))
+        Ok(Some(DoNotFree { data: display }))
     }
 }
 
-pub fn x_close_display(display: Display) -> i32 {
-    unsafe { cdef::XCloseDisplay(display._private) }
+pub fn x_close_display(display: DoNotFree<cdef::Display>) -> i32 {
+    unsafe { cdef::XCloseDisplay(display.data) }
 }
 
-pub fn x_default_screen(display: &Display) -> i32 {
-    unsafe { cdef::XDefaultScreen(display._private) }
+pub fn x_default_screen(display: &DoNotFree<cdef::Display>) -> i32 {
+    unsafe { cdef::XDefaultScreen(display.data) }
 }
