@@ -195,6 +195,6 @@ pub fn x_close_display(display: DoNotFree<cdef::Display>) -> i32 {
     unsafe { cdef::XCloseDisplay(display.data) }
 }
 
-pub fn x_default_screen(display: &DoNotFree<cdef::Display>) -> i32 {
+pub fn x_default_screen(display: &mut DoNotFree<cdef::Display>) -> i32 {
     unsafe { cdef::XDefaultScreen(display.data) }
 }
