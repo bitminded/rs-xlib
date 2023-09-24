@@ -18,6 +18,12 @@ impl<T> std::ops::Deref for DoNotFree<T> {
     }
 }
 
+impl<T> std::ops::DerefMut for DoNotFree<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { &mut (*self.data) }
+    }
+}
+
 #[derive(Debug)]
 pub struct XlibError {
     message: String,
