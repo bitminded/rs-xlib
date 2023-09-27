@@ -3,6 +3,9 @@ use std::fmt;
 
 pub mod cdef;
 
+pub type XID = cdef::XID;
+pub type Window = cdef::Window;
+
 /// A simple wrapper around a raw pointer usually returned by some functions that are part of the
 /// safe interface of this library. Its primary purpose is to signal that the resource the raw
 /// pointer is pointing to is managed by Xlib itself and therefore is not to be freed manually.

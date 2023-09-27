@@ -1,4 +1,7 @@
-use std::os::raw::{c_char, c_int, c_void};
+use std::os::raw::{c_char, c_int, c_ulong, c_void};
+
+pub type XID = c_ulong;
+pub type Window = XID;
 
 #[repr(C)]
 pub struct Display {
